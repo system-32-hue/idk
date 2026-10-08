@@ -2,19 +2,21 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ADMIN_NAME = "gust666_falso2"
-local CONTROL_NAME = "RemoteEventExplorerControl"
+local REMOTE_NAME = "RemoteEventExplorerControl"
 
-local control = ReplicatedStorage:FindFirstChild(CONTROL_NAME)
+local control = ReplicatedStorage:FindFirstChild(REMOTE_NAME)
 
-if control then
-	control:Destroy()
+if not control then
+	control = Instance.new("RemoteEvent")
+	control.Name = REMOTE_NAME
+	control.Parent = ReplicatedStorage
 end
 
-control = Instance.new("RemoteEvent")
-control.Name = CONTROL_NAME
-control.Parent = ReplicatedStorage
+local function findByPath(path)
+	if typeof(path) ~= "string" then
+		return nil
+	end
 
-local function findRemote(path)
 	local current = game
 
 	for part in string.gmatch(path, "[^%.]+") do
@@ -30,19 +32,7 @@ local function findRemote(path)
 	return current
 end
 
-local function getPath(instance)
-	local parts = {}
-	local current = instance
-
-	while current and current ~= game do
-		table.insert(parts, 1, current.Name)
-		current = current.Parent
-	end
-
-	return "game." .. table.concat(parts, ".")
-end
-
-control.OnServerEvent:Connect(function(player, action, remotePath)
+control.OnServerEvent:Connect(function(player, action, path)
 	if player.Name ~= ADMIN_NAME then
 		return
 	end
@@ -51,11 +41,7 @@ control.OnServerEvent:Connect(function(player, action, remotePath)
 		return
 	end
 
-	if typeof(remotePath) ~= "string" then
-		return
-	end
-
-	local remote = findRemote(remotePath)
+	local remote = findByPath(path)
 
 	if not remote then
 		return
@@ -65,24 +51,15 @@ control.OnServerEvent:Connect(function(player, action, remotePath)
 		return
 	end
 
-	local activationEvent = ReplicatedStorage:FindFirstChild("RemoteEventExplorerActivated")
+	print("[RemoteEvent Explorer] Ativado:", path)
 
-	if not activationEvent then
-		activationEvent = Instance.new("BindableEvent")
-		activationEvent.Name = "RemoteEventExplorerActivated"
-		activationEvent.Parent = ReplicatedStorage
+	local bindable = ReplicatedStorage:FindFirstChild("RemoteEventExplorerActivated")
+
+	if not bindable then
+		bindable = Instance.new("BindableEvent")
+		bindable.Name = "RemoteEventExplorerActivated"
+		bindable.Parent = ReplicatedStorage
 	end
 
-	activationEvent:Fire(player, remote)
-
-	print("[RemoteEvent Explorer] Ativado:", getPath(remote))
-end)
-
-Players.PlayerAdded:Connect(function(player)
-	if player.Name ~= ADMIN_NAME then
-		return
-	end
-
-	player.CharacterAdded:Connect(function()
-	end)
+	bindable:Fire(player, remote)
 end)
